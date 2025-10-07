@@ -8,7 +8,7 @@ import { sendNewsSummaryEmail, sendWelcomeEmail } from "../Nodemailer";
 import { getAllUsersForNewsEmail } from "../actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "../actions/watchlist.actions";
 import { getNews } from "../actions/finnhub.actions";
-import { formatDateToday } from "../utils";
+import { formatDateToday, getFormattedTodayDate } from "../utils";
 
 export const sendSignUpEmail = inngest.createFunction(
   { id: "sign-up-email" },
@@ -99,7 +99,10 @@ export const sendDailyNewsSummary = inngest.createFunction(
     });
 
     // Step 3: Summarize news via AI for each user
-    const userNewsSummaries: { user: User; newsContent: string | null }[] = [];
+    const userNewsSummaries: {
+      user: UserForNewsEmail;
+      newsContent: string | null;
+    }[] = [];
 
     for (const { user, articles } of results) {
       try {
@@ -121,7 +124,7 @@ export const sendDailyNewsSummary = inngest.createFunction(
 
         userNewsSummaries.push({ user, newsContent });
       } catch (e) {
-        console.error("Failed to summarize news for", user.email);
+        console.error("Failed to summarize news for", user.id);
         userNewsSummaries.push({ user, newsContent: null });
       }
     }
@@ -131,10 +134,10 @@ export const sendDailyNewsSummary = inngest.createFunction(
       await Promise.all(
         userNewsSummaries.map(async ({ user, newsContent }) => {
           if (!newsContent) return false;
-
+          const date = getFormattedTodayDate();
           return await sendNewsSummaryEmail({
             email: user.email,
-            date: formatDateToday,
+            date,
             newsContent,
           });
         })
